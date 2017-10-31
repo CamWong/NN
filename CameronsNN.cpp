@@ -6,18 +6,16 @@
 #include <time.h>
 #include <math.h>
 #include <stdio.h>
+#include <string.h>
+#define LEARNING_RATE 0.1
 #define TXTFILE ".txt"
 #define NETWORKNUMBER ""
 #define FILEPATH "C:\\Users\\c3164126\\Documents\\MyStuff\\trunk\\PhD\\My Papers\\Grid Optimisation using Neural Networks\\"
-#define TRAINING 1
-#define LEARNING_RATE 0.3
-double sigmoid(double x);
-int max_value(int* x, int num_values);
-void randomise(double* input, int inputcomponents);
-void set_to_1(double* input, int inputcomponents);
-void set_to_0(double* input, int inputcomponents);
-void net_layer(double* input, int num_of_inputs, double* output, int num_of_outputs, double* w, double* b, double* dpred_dout, int training_flag);
 
+double sigmoid(double x);
+void randomise(double* input, int inputcomponents);
+void net_layer(double* input, int num_of_inputs, double* output, int num_of_outputs, double* w, double* b, double* dpred_dout, int training_flag);
+void file_open_check(FILE* file, char* file_name);
 void training(double*dpred_dout,double* dout_dw, double* dprev, int num_neurons_n, int num_neurons_1, int num_neurons_0, double* w, double* b);
 
 //defining globals
@@ -34,13 +32,8 @@ int main()
 	//Opening the initialisation file
 	FILE *init_file;
 	init_file = fopen(FILEPATH"NN_init" NETWORKNUMBER TXTFILE , "r");
-	if (init_file == NULL)
-	{
-		printf("ERROR! can't open initialisation file to read, check file path!\n");
-		return 0;
-	}
-	else printf("Initialisation file successfully opened\n");
-		
+	file_open_check(init_file, "INITIALISATION");
+
 	int num_layers, data_volume;
 	double iterations;
 	fscanf(init_file, "%d\t %lf\t %d\t %d\t", &training_flag, &iterations, &num_layers, &data_volume);
@@ -82,12 +75,7 @@ int main()
 	//Opening the Data file
 	FILE *data_file;
 	data_file = fopen(FILEPATH"NN_data" NETWORKNUMBER TXTFILE, "r");
-	if (init_file == NULL)
-	{
-		printf("ERROR! can't open data file to read, check file path!\n");
-		return 0;
-	}
-	else printf("Data file successfully opened\n");
+	file_open_check(init_file, "DATA");
 
 	double* target	= (double*)malloc(sizeof(double) * num_neurons[num_layers - 1] * data_volume);		//initialising the target array (matrix) size
 	double* data	= (double*)malloc(sizeof(double) * data_volume * num_neurons[0]);				//initialising the data array (matrix) size
@@ -106,23 +94,12 @@ int main()
 	while (!feof(data_file)) 
 	{
 		//This loop grabs the data for the specific entry and stores it in the data array.
-		for (int i = 0; i < num_neurons[0]; i++) {
-			fscanf(data_file, "%lf", &data[num_neurons[0] * e + i]);
-			printf("%lf\t", data[num_neurons[0] * e + i]);
-		}
-		//If the neural network is getting trained, store the target variables
-		if ((training_flag == 1)|(training_flag == 2))
-		{
-			for (int i = 0; i < num_neurons[num_layers - 1]; i++)	
-			{
-				fscanf(data_file, "%lf", &target[num_neurons[(num_layers - 1)] * e + i]);
-				printf("%lf\t", target[num_neurons[(num_layers - 1)] * e + i]);
-			}
-			
-		}
-		printf("e:%d", e);
-			printf("\n");
+		for (int i = 0; i < num_neurons[0]; i++) fscanf(data_file, "%lf", &data[num_neurons[0] * e + i]);
+		
+		//If the neural network is getting trained, iterate through and store the target variables
+		if ((training_flag == 1)|(training_flag == 2)) for(int i = 0; i < num_neurons[num_layers - 1]; i++) fscanf(data_file, "%lf", &target[num_neurons[(num_layers - 1)] * e + i]);
 		e++;
+
 	}
 	if (e != (data_volume))
 	{
@@ -160,47 +137,34 @@ int main()
 			randomise(&b[i][0], num_neurons[i + 1]);
 		}
 	}
+
+	//////////////////////////////////////////////////////////// READING FROM WEIGHT AND BIAS FILES //////////////////////////////////////////////////////////////////////////////////////////
 	//if the system is assuming an already trained neural net, open and load the weights and biasses between each layer.
 	if ((training_flag==0)|(training_flag == 2))
 	{
 		FILE* w_file;
 		w_file = fopen(FILEPATH"NN_w" NETWORKNUMBER TXTFILE, "r");
-		if (w_file == NULL)
-		{
-			printf("ERROR! can't open weight file to read, check file path!\n");
-			return 0;
-		}
-		else printf("Weight file successfully opened\n");
+		file_open_check(init_file, "WEIGHT");
 
 		FILE* b_file;
 		b_file = fopen(FILEPATH"NN_b" NETWORKNUMBER TXTFILE, "r");
-		if (b_file == NULL)
-		{
-			printf("ERROR! can't open bias file to read, check file path!\n");
-			return 0;
-		}
-		else printf("Bias file successfully opened\n");
+		file_open_check(init_file, "BIAS");
 		e = 0;
 		while( !feof(w_file) )
 		{
 			for (int j = 0; j < num_neurons[e]*num_neurons[e+1]; j++)
 			{
-				fscanf(w_file, "%lf\t", &w[e][j]);
-					
+				fscanf(w_file, "%lf\t", &w[e][j]);	
 			}
 			
 			e++;
 			if (e == (num_layers - 1) && !feof(w_file))
 			{
-				break;
+				printf("Error! Weight file has incorrect entries! Please re-train system or fix issue\nProgram has not exited\n");
+					return 0;
 			}
 		}
-		if ((e != (num_layers - 1)))
-		{
-			printf("Error! Weight file has incorrect entries! Please re-train system or fix issue\nProgram has not exited\n");
-			return 0;
-		}
-		else printf("Weight values successfully read from file\n");
+		printf("Weight values successfully read from file\n");
 
 		e = 0;
 		while(!feof(b_file))
@@ -210,18 +174,19 @@ int main()
 				if (!feof(b_file)) fscanf(b_file, "%lf\t", &b[e][j]);
 			}
 			e++;
+			if (e == (num_layers - 1) && !feof(w_file))
+			{
+				printf("Error! Weight file has incorrect entries! Please re-train system or fix issue\nProgram has not exited\n");
+				return 0;
+			}
 		}
-		if ((e != (num_layers - 1)))
-		{
-			printf("Error! Bias file has incorrect entries! Please re-train system or fix issue\nProgram has not exited\n");
-			return 0;
-		}
-		else printf("Bias values successfully read from file\n");
+		printf("Bias values successfully read from file\n");
 		e = 0;
 		fclose(w_file);
 		fclose(b_file);
 
 	}
+	//////////////////////////////////////////////////////////// FINISHED READING WEIGHTS AND BIASSES //////////////////////////////////////////////////////////////////////////////////////////
 	/////////////////////////////////////////////////////////////		EVALUATION STATE STARTS HERE		//////////////////////////////////////////////////////////
 	//In evaluation state (training_flag = 0), the system does not perform back-propagation and is only used to take inputs and make predictions on what the output should
 	//be from those inputs. Input data alone with the estimates are stored in NN_eval
@@ -230,12 +195,8 @@ int main()
 		//opening the file the data with result will be stored in.
 		FILE* eval_file;
 		eval_file = fopen(FILEPATH"NN_eval" NETWORKNUMBER TXTFILE, "w");
-		if (eval_file == NULL)
-		{
-			printf("ERROR! Failed to create result information file, check file path!\n");
-			return 0;
-		}
-		else printf("Result file successfully opened\n");
+		file_open_check(eval_file, "EVALUATION");
+		
 
 		//data evaluation loop. In this loop the trained NN will be receive data, make a prediction and then save the data set plus the results into a file.
 		for (int i = 0; i < data_volume; i++)
@@ -305,19 +266,10 @@ int main()
 		FILE *w_file;
 		FILE *b_file;
 		w_file = fopen(FILEPATH"NN_w" NETWORKNUMBER TXTFILE, "w");
-		if (w_file == NULL)
-		{
-			printf("ERROR! Failed to create weight information file, check file path!\n");
-			return 0;
-		}
-		else printf("Weight file successfully opened\n");
+		file_open_check(w_file, "WEIGHT");
 		b_file = fopen(FILEPATH"NN_b" NETWORKNUMBER TXTFILE, "w");
-		if (w_file == NULL)
-		{
-			printf("ERROR! Failed to create bias information file, check file path!\n");
-			return 0;
-		}
-		else printf("Bias file successfully opened\n");
+		file_open_check(b_file, "BIAS");
+	
 		for (int i = 0; i < (num_layers - 1); i++)
 		{
 			for (int j = 0; j < (num_neurons[i] * num_neurons[i + 1]); j++)
@@ -337,7 +289,6 @@ int main()
 	}
 	
 
-	//free(layer[0]);
 	for (int i = 0; i < (num_layers-1); i++)
 	{
 		free(layer[i]);
@@ -354,16 +305,14 @@ int main()
 	return 0;
 }
 
-//This function computes the maximum value of an int array.
-int max_value(int* x, int num_values)
-{
-	int max_value = 0;
-	for (int i = 0; i < num_values; i++)
-	{
-		if (x[i] > max_value) max_value = x[i];
-	}
-	return(max_value);
-}
+//////////////////////////////////////////////////////////// END OF MAIN //////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////// END OF MAIN //////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////// END OF MAIN //////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////// END OF MAIN //////////////////////////////////////////////////////////////////////////////////////////
+
+
+
+
 
 //This function is the used as the activation function of the neural network. This bit can be removed from the code and swapped out with other activation functions.
 double sigmoid(double x)
@@ -383,29 +332,7 @@ void randomise(double* input, int inputcomponents)
 	return;
 }
 
-//sets the values of a double array to 1.0, this is used to initialise the partial differential temporary value holder
-void set_to_1(double* input, int inputcomponents)
-{
-	//printf("the size of array is: %d\n", sizeof(input[0]));
-	#pragma omp parallel for
-	for (int i = 0; i < inputcomponents; i++)
-	{
-		input[i] = 1;
-	}
-	return;
-}
 
-//sets the values of a double array to 0.0, this is used to initialise the partial differential temporary value holder
-void set_to_0(double* input, int inputcomponents)
-{
-	//printf("the size of array is: %d\n", sizeof(input[0]));
-	#pragma omp parallel for
-	for (int i = 0; i < inputcomponents; i++)
-	{
-		input[i] = 0;
-	}
-	return;
-}
 
 //this function is used to update the neuron values for forward propagation, if the mode is training (training_flag=1) the intermediate partial derivatives are also calculated
 //so that they can be consolidated for use in the training function of the neural network.
@@ -434,6 +361,7 @@ void net_layer(double* input, int num_of_inputs, double* output, int num_of_outp
 	}
 }
 
+//The training function contains the back-propagation function within the 
 void training(double* dpred_dout, double* dout_dw, double* dprev, int num_neurons_n, int num_neurons_1, int num_neurons_0, double* w, double* b)
 {
 	double* temp_dpred_dout = (double*)calloc(num_neurons_n, sizeof(double));
@@ -442,13 +370,13 @@ void training(double* dpred_dout, double* dout_dw, double* dprev, int num_neuron
 	#pragma omp parallel for
 	for (int k = 0; k < num_neurons_n; k++) //number of outputs
 	{
-		for (int j = 0; j < num_neurons_1; j++) //number of neurons in layer[n+1]
+		for (int j = 0; j < num_neurons_1; j++)					
 		{
 			temp_out = LEARNING_RATE * dpred_dout[j] * dprev[k];										
-			b[j] -= temp_out;										//updating b[n] which are the BIASSES between layer[n] and layer [n+1]
-			for (int i = 0; i < num_neurons_0; i++)	//number of neurons in layer[n]
+			b[j] -= temp_out;													
+			for (int i = 0; i < num_neurons_0; i++)								
 			{
-				w[i*num_neurons_1 + j] -= temp_out *  dout_dw[i];				//updating w[n] which are the WEIGHTS between layer[n] and layer [n+1]	
+				w[i*num_neurons_1 + j] -= temp_out *  dout_dw[i];				
 				temp_dpred_dout[k] += temp_out*w[i*num_neurons_1 + j];		
 			}
 		}
@@ -458,8 +386,16 @@ void training(double* dpred_dout, double* dout_dw, double* dprev, int num_neuron
 	{
 			dprev[k] = temp_dpred_dout[k];
 	}
-
 	free(temp_dpred_dout);
-//	printf("");
 	return;
+}
+
+void file_open_check(FILE* file, char* file_name)
+{
+	if (file == NULL)
+	{
+		printf("ERROR! can't open %s file to read, check file path!\n", file_name);
+		throw;
+	}
+	else printf("%s file successfully opened\n", file_name);
 }
