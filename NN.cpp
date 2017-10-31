@@ -6,7 +6,7 @@
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
-#define LEARNING_RATE 0.1
+#define LEARNING_RATE 0.01
 #define TXTFILE ".txt"
 #define NETWORKNUMBER ""
 #define FILEPATH ".\\"
@@ -224,21 +224,21 @@ int main()
 		}
 		fclose(eval_file);
 	}
-	/////////////////////////////////////////////////////////////		EVALUATION STATE FINISHES HERE		//////////////////////////////////////////////////////////
-	/////////////////////////////////////////////////////////////		TRAINING STATE STARTS HERE			//////////////////////////////////////////////////////////
+	/////////////////////////////////////////////////////////////		EVALUATION STATE FINISHES HERE		/////////////////////////////////////////////////////////////////////
+	/////////////////////////////////////////////////////////////		TRAINING STATE STARTS HERE			/////////////////////////////////////////////////////////////////////
 	//In training state the data is propagated forwards, where the result is then compared to target values creating a cost squared function. The partial derivative
 	//of the cost function is then propagated backwards through the system, adjusting the weight bias values of each layer to improve the performance of the system.
 	//Back propagation uses calculus and linear algebra to achieve this, the matrix size is optimised to improve the speed of the system by removing unecessary rows
 	//and columns. ASK CAMERON FOR EXPLANATION IF YOU GET LOST
 	else
 	{
-		int x = 0;
+	    int d = 0;
 		//creating temporary square matrix which will hold intermediate values of the cascading partial derivative between layers
 		double* dprev = (double*)calloc(num_neurons[num_layers - 1], sizeof(double));
 		printf("Training...\n");
 		for (int x = 0; x < iterations; x++)
 		{
-			int d = rand() % (int)data_volume;	//choosing a random data point to train the network
+			d = rand() % (int)data_volume;	//choosing a random data point to train the network
 			#pragma omp parallel for
 			for (int j = 0; j < num_neurons[0]; j++) layer[0][j] = data[d*num_neurons[0] + j]; //updating the input buffer/layer
 
@@ -289,6 +289,43 @@ int main()
 		fclose(b_file);
 		printf("Weights and Biasses saved!\n");
 	}
+	////////////////////////////////////////////////////////////     TRAINING STATE FINISHES HERE     //////////////////////////////////////////////////////////////////////////////////////////
+	//////////////////////////////////////////////////////////// (crude) TESTING STATE STARTS HERE    //////////////////////////////////////////////////////////////////////////////////////////
+    FILE* eval_file;
+    eval_file = fopen(FILEPATH"NN_eval" NETWORKNUMBER TXTFILE, "w");
+    file_open_check(eval_file, "EVALUATION");
+    double rms_error = 0;
+    double tmp_error = 0;
+    int x;
+    printf("Testing Performance...\n");
+    if (training_flag == 1) {
+        int d = 0;
+        for (x = 0;x<0.3*data_volume;x++) { // Pretty crappy way to do this but here we are...
+            if (x>0)
+                fprintf(eval_file,"\n");
+            d = rand() % (int)data_volume;	// choosing a random data point to train the network
+            for (int j = 0; j < num_neurons[0]; j++)
+            {
+                layer[0][j] = data[d*num_neurons[0] + j]; //updating the input buffer/layer
+            }
+            /////////////////////////////////////////////////////////////		Forward propagation					/////////////////////////////////////////////////////////////
+            for (int j = 0; j < (num_layers - 1); j++)
+            {
+                net_layer(&layer[j][0], num_neurons[j], &layer[j + 1][0], num_neurons[j + 1], &w[j][0], &b[j][0], &dpred_dout[j][0],  0);
+            }
+            tmp_error = 0;
+            for(int j = 0; j<num_neurons[num_layers - 1]; j++){
+                tmp_error += pow(layer[num_layers - 1][j]-target[d*num_neurons[num_layers - 1] + j],2);
+                fprintf(eval_file,"%10.6lf ",layer[num_layers - 1][j]);
+            }
+            for(int j = 0; j<num_neurons[num_layers - 1]; j++) fprintf(eval_file,"%10.6lf ",target[d*num_neurons[num_layers - 1] + j],2);
+            rms_error += tmp_error/(num_neurons[num_layers-1]);
+        }
+        rms_error = sqrt(rms_error/x);
+        printf("Testing Complete.\nRMS Error:\n%6.2lf",rms_error);
+	}
+	fclose(eval_file);
+	////////////////////////////////////////////////////////////     TESTING STATE FINISHES HERE      //////////////////////////////////////////////////////////////////////////////////////////
 
 
 	for (int i = 0; i < (num_layers-1); i++)
