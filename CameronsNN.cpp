@@ -1,7 +1,6 @@
 // Parameterised Neural Net With Sigmoid.cpp : Defines the entry point for the console application.
 //
 
-#include "stdafx.h"
 #include <stdlib.h>
 #include <time.h>
 #include <math.h>
@@ -10,7 +9,7 @@
 #define LEARNING_RATE 0.1
 #define TXTFILE ".txt"
 #define NETWORKNUMBER ""
-#define FILEPATH "C:\\Users\\c3164126\\Documents\\MyStuff\\trunk\\PhD\\My Papers\\Grid Optimisation using Neural Networks\\"
+#define FILEPATH ".\\"
 
 double sigmoid(double x);
 void randomise(double* input, int inputcomponents);
@@ -26,7 +25,7 @@ int training_flag = 0;
 int main()
 {
 
-	
+
 	//////////////////////////////////////////////////////////// READING FROM INITIALISATION FILE //////////////////////////////////////////////////////////////////////////////////////////
 
 	//Opening the initialisation file
@@ -79,9 +78,9 @@ int main()
 
 	double* target	= (double*)malloc(sizeof(double) * num_neurons[num_layers - 1] * data_volume);		//initialising the target array (matrix) size
 	double* data	= (double*)malloc(sizeof(double) * data_volume * num_neurons[0]);				//initialising the data array (matrix) size
-	if (e != (num_layers)) 
+	if (e != (num_layers))
 	{
-		printf("ERROR! Data in initialisation file does not have the correct number of entries!\nCheck the entries in the initialisation file is correct!");
+		printf("ERROR! Data in initialisation file does not have the correct number of entries!\nRead %d entries, expected %d entries.\nCheck the entries in the initialisation file is correct!",e,num_layers);
 		return(0);
 	}
 	else printf("Initialisation completed successfully\n");
@@ -89,13 +88,13 @@ int main()
 
 
 	e = 0; //resetting error flag
-	
+
 	//taking data from file and storing it in relevant information
-	while (!feof(data_file)) 
+	while (!feof(data_file))
 	{
 		//This loop grabs the data for the specific entry and stores it in the data array.
 		for (int i = 0; i < num_neurons[0]; i++) fscanf(data_file, "%lf", &data[num_neurons[0] * e + i]);
-		
+
 		//If the neural network is getting trained, iterate through and store the target variables
 		if ((training_flag == 1)|(training_flag == 2)) for(int i = 0; i < num_neurons[num_layers - 1]; i++) fscanf(data_file, "%lf", &target[num_neurons[(num_layers - 1)] * e + i]);
 		e++;
@@ -103,14 +102,14 @@ int main()
 	}
 	if (e != (data_volume))
 	{
-		printf("ERROR! Data in data file does not have the correct number of entries!\nCheck the entires in the data file and initialisation file is correct!");
+		printf("ERROR! Data in data file does not have the correct number of entries!\nRead %d entries, expected %d entries.\nCheck the entires in the data file and initialisation file is correct!",e,data_volume);
 		return(0);
 	}
 	else printf("Data reading completed successfully\n");
 	fclose(data_file);
 	//////////////////////////////////////////////////////////// FINISHED READING FROM DATA FILE //////////////////////////////////////////////////////////////////////////////////////////
-	
-	
+
+
 	//////////////////////////////////////////////////////////// Initialising variables with specified size by files///////////////////////////////////////////////////////////////////////
 	double**	layer =			(double**)malloc(sizeof(double*)	* num_layers);
 	double**	w =				(double**)malloc(sizeof(double*)	* (num_layers - 1));
@@ -123,12 +122,12 @@ int main()
 
 	for (int i = 0; i < (num_layers - 1); i++)
 	{
-		layer[i + 1] = (double*)calloc(num_neurons[i + 1], sizeof(double));								
-		dpred_dout[i] = (double*)calloc(num_neurons[i + 1], sizeof(double));							
-		w[i] = (double*)calloc(num_neurons[i] * num_neurons[i + 1], sizeof(double));					
-		b[i] = (double*)calloc(num_neurons[i + 1], sizeof(double));								
-																	
-		//if the system is being trained for the first time. 
+		layer[i + 1] = (double*)calloc(num_neurons[i + 1], sizeof(double));
+		dpred_dout[i] = (double*)calloc(num_neurons[i + 1], sizeof(double));
+		w[i] = (double*)calloc(num_neurons[i] * num_neurons[i + 1], sizeof(double));
+		b[i] = (double*)calloc(num_neurons[i + 1], sizeof(double));
+
+		//if the system is being trained for the first time.
 		if (training_flag == 1)
 		{
 			time_t t;
@@ -154,9 +153,9 @@ int main()
 		{
 			for (int j = 0; j < num_neurons[e]*num_neurons[e+1]; j++)
 			{
-				fscanf(w_file, "%lf\t", &w[e][j]);	
+				fscanf(w_file, "%lf\t", &w[e][j]);
 			}
-			
+
 			e++;
 			if (e == (num_layers - 1) && !feof(w_file))
 			{
@@ -196,7 +195,7 @@ int main()
 		FILE* eval_file;
 		eval_file = fopen(FILEPATH"NN_eval" NETWORKNUMBER TXTFILE, "w");
 		file_open_check(eval_file, "EVALUATION");
-		
+
 
 		//data evaluation loop. In this loop the trained NN will be receive data, make a prediction and then save the data set plus the results into a file.
 		for (int i = 0; i < data_volume; i++)
@@ -214,9 +213,9 @@ int main()
 			for(int j = 0; j<num_neurons[num_layers - 1]; j++) fprintf(eval_file, "%lf\t", layer[num_layers - 1][j]);
 			if(i != (data_volume-1)) fprintf(eval_file, "\n");
 		}
-		
-		
-		for (int i = 0; i < num_neurons[0]; i++) 
+
+
+		for (int i = 0; i < num_neurons[0]; i++)
 		{
 			fscanf(data_file, "%lf", &data[num_neurons[0] * e + i]);
 		}
@@ -228,7 +227,7 @@ int main()
 	}
 	/////////////////////////////////////////////////////////////		EVALUATION STATE FINISHES HERE		//////////////////////////////////////////////////////////
 	/////////////////////////////////////////////////////////////		TRAINING STATE STARTS HERE			//////////////////////////////////////////////////////////
-	//In training state the data is propagated forwards, where the result is then compared to target values creating a cost squared function. The partial derivative 
+	//In training state the data is propagated forwards, where the result is then compared to target values creating a cost squared function. The partial derivative
 	//of the cost function is then propagated backwards through the system, adjusting the weight bias values of each layer to improve the performance of the system.
 	//Back propagation uses calculus and linear algebra to achieve this, the matrix size is optimised to improve the speed of the system by removing unecessary rows
 	//and columns. ASK CAMERON FOR EXPLANATION IF YOU GET LOST
@@ -236,7 +235,7 @@ int main()
 	{
 		int x = 0;
 		//creating temporary square matrix which will hold intermediate values of the cascading partial derivative between layers
-		double* dprev = (double*)calloc(num_neurons[num_layers - 1], sizeof(double));			
+		double* dprev = (double*)calloc(num_neurons[num_layers - 1], sizeof(double));
 		for (int x = 0; x < iterations; x++)
 		{
 			int d = rand() % (int)data_volume;	//choosing a random data point to train the network
@@ -269,7 +268,7 @@ int main()
 		file_open_check(w_file, "WEIGHT");
 		b_file = fopen(FILEPATH"NN_b" NETWORKNUMBER TXTFILE, "w");
 		file_open_check(b_file, "BIAS");
-	
+
 		for (int i = 0; i < (num_layers - 1); i++)
 		{
 			for (int j = 0; j < (num_neurons[i] * num_neurons[i + 1]); j++)
@@ -287,7 +286,7 @@ int main()
 		fclose(b_file);
 		printf("Weights and Biasses saved!\n");
 	}
-	
+
 
 	for (int i = 0; i < (num_layers-1); i++)
 	{
@@ -339,7 +338,7 @@ void randomise(double* input, int inputcomponents)
 void net_layer(double* input, int num_of_inputs, double* output, int num_of_outputs, double* w, double* b, double* dpred_dout, int training_flag)
 {
 	//Updating the output buffer and performing training for this layer
-	//This will compute each output one by one and then squash the result into a sigmoid function. 
+	//This will compute each output one by one and then squash the result into a sigmoid function.
 	//Within this loop the differential terms are also created, this is done in this function because the intermediate term dpred_dout is only able to be computed in this process.
 	#pragma omp parallel for
 	for (int j = 0; j < (num_of_outputs); j++)
@@ -361,7 +360,7 @@ void net_layer(double* input, int num_of_inputs, double* output, int num_of_outp
 	}
 }
 
-//The training function contains the back-propagation function within the 
+//The training function contains the back-propagation function within the
 void training(double* dpred_dout, double* dout_dw, double* dprev, int num_neurons_n, int num_neurons_1, int num_neurons_0, double* w, double* b)
 {
 	double* temp_dpred_dout = (double*)calloc(num_neurons_n, sizeof(double));
@@ -370,14 +369,14 @@ void training(double* dpred_dout, double* dout_dw, double* dprev, int num_neuron
 	#pragma omp parallel for
 	for (int k = 0; k < num_neurons_n; k++) //number of outputs
 	{
-		for (int j = 0; j < num_neurons_1; j++)					
+		for (int j = 0; j < num_neurons_1; j++)
 		{
-			temp_out = LEARNING_RATE * dpred_dout[j] * dprev[k];										
-			b[j] -= temp_out;													
-			for (int i = 0; i < num_neurons_0; i++)								
+			temp_out = LEARNING_RATE * dpred_dout[j] * dprev[k];
+			b[j] -= temp_out;
+			for (int i = 0; i < num_neurons_0; i++)
 			{
-				w[i*num_neurons_1 + j] -= temp_out *  dout_dw[i];				
-				temp_dpred_dout[k] += temp_out*w[i*num_neurons_1 + j];		
+				w[i*num_neurons_1 + j] -= temp_out *  dout_dw[i];
+				temp_dpred_dout[k] += temp_out*w[i*num_neurons_1 + j];
 			}
 		}
 	}
