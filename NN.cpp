@@ -235,6 +235,7 @@ int main()
 		int x = 0;
 		//creating temporary square matrix which will hold intermediate values of the cascading partial derivative between layers
 		double* dprev = (double*)calloc(num_neurons[num_layers - 1], sizeof(double));
+		printf("Training...\n");
 		for (int x = 0; x < iterations; x++)
 		{
 			int d = rand() % (int)data_volume;	//choosing a random data point to train the network
@@ -258,8 +259,11 @@ int main()
 			{
 				training(&dpred_dout[j-1][0], &layer[j-1][0], &dprev[0], num_neurons[num_layers - 1], num_neurons[j], num_neurons[j - 1], &w[j - 1][0], &b[j - 1][0]);
 			}
-			/////////////////////////////////////////////////////////////		FORWARD PROPAGATION FINISHES HERE!		//////////////////////////////////////////////////////////
+			/////////////////////////////////////////////////////////////		BACK PROPAGATION FINISHES HERE!		//////////////////////////////////////////////////////////
+			if((x%1000)==0)
+                printf("\r  %5.1lf%%",(x/iterations*100));
 		}
+		printf("\nTraining Complete.\n");
 		free(dprev);
 		FILE *w_file;
 		FILE *b_file;
