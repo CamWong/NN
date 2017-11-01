@@ -6,7 +6,7 @@
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
-#define LEARNING_RATE 0.01
+#define LEARNING_RATE 0.1
 #define TXTFILE ".txt"
 #define NETWORKNUMBER ""
 #define FILEPATH ".\\"
@@ -89,16 +89,19 @@ int main()
 	e = 0; //resetting error flag
 
 	//taking data from file and storing it in relevant information
+	printf("Reading Data...\n");
 	while (!feof(data_file))
 	{
 		//This loop grabs the data for the specific entry and stores it in the data array.
 		for (int i = 0; i < num_neurons[0]; i++) fscanf(data_file, "%lf", &data[num_neurons[0] * e + i]);
 
-		//If the neural network is getting trained, iterate through and store the target variables
+	 	//If the neural network is getting trained, iterate through and store the target variables
 		if ((training_flag == 1)|(training_flag == 2)) for(int i = 0; i < num_neurons[num_layers - 1]; i++) fscanf(data_file, "%lf", &target[num_neurons[(num_layers - 1)] * e + i]);
 		e++;
-
+		if(e%10==0)
+            printf("\r %5.1lf%%",((double)e/data_volume)*100);
 	}
+	printf("\n");
 	if (e != (data_volume))
 	{
 		printf("ERROR! Data in data file does not have the correct number of entries!\nRead %d entries, expected %d entries.\nCheck the entires in the data file and initialisation file is correct!",e,data_volume);
@@ -260,8 +263,8 @@ int main()
 				training(&dpred_dout[j-1][0], &layer[j-1][0], &dprev[0], num_neurons[num_layers - 1], num_neurons[j], num_neurons[j - 1], &w[j - 1][0], &b[j - 1][0]);
 			}
 			/////////////////////////////////////////////////////////////		BACK PROPAGATION FINISHES HERE!		//////////////////////////////////////////////////////////
-			if((x%1000)==0)
-                printf("\r  %5.1lf%%",(x/iterations*100));
+			if((x%100)==0)
+                printf("\r  %7.3lf%%",(x/iterations*100));
 		}
 		printf("\nTraining Complete.\n");
 		free(dprev);
