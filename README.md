@@ -9,7 +9,7 @@ Mode 1: 	Fresh/first training mode, will randomly initialise all the weight vari
 Mode 2:		Continued training mode, enables continued training on an already trained NN, this may be useful when new data has become available where it is not desired to train the NN from scratch.
 
 ITERATIONS
-The iterations is the amount of data points you wish to use to train your data set with. If you wish to train the system via convergence instead of a set amount of iterations, the iterations value will still be used as a safety net for systems which do not converge.
+The iterations is the number of times you wish to sweep through your data during training. If you wish to train the system via convergence instead of a set amount of iterations, the iterations value will still be used as a safety net for systems which do not converge.
 
 CONVERGENCE CONDITION
 This is the threshold for which convergence is considered (a convergence condition of 0.1 means that the cost squared, pred-target squared, is less than or equal to 0.1), if it is not wished to use this, method of training, set the convergence condition to 0.0 
