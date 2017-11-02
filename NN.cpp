@@ -24,7 +24,7 @@ int training_flag = 0;
 
 int main()
 {
-
+    int modval = 10;
 	//////////////////////////////////////////////////////////// READING FROM INITIALISATION FILE //////////////////////////////////////////////////////////////////////////////////////////
 
 	//Opening the initialisation file
@@ -68,6 +68,7 @@ int main()
 		}
 		e++;
 	}
+	modval = floor(100.0*exp(-0.005*data_volume)+1); // This is so that the terminal readout doesn't slow down the training too significantly, varies based on number of samples to train over.
 	//////////////////////////////////////////////////////////// FINISHED READING FROM INITIALISATION FILE //////////////////////////////////////////////////////////////////////////////////////////
 	//////////////////////////////////////////////////////////// READING FROM DATA FILE //////////////////////////////////////////////////////////////////////////////////////////
 	//Opening the Data file
@@ -98,8 +99,8 @@ int main()
 	 	//If the neural network is getting trained, iterate through and store the target variables
 		if ((training_flag == 1)|(training_flag == 2)) for(int i = 0; i < num_neurons[num_layers - 1]; i++) fscanf(data_file, "%lf", &target[num_neurons[(num_layers - 1)] * e + i]);
 		e++;
-		if(e%10==0)
-            printf("\r %5.1lf%%",((double)e/data_volume)*100);
+		if((e+1)%10==0)
+            printf("\r %7.3lf%%",((double)(e+1)/data_volume)*100);
 	}
 	printf("\n");
 	if (e != (data_volume))
@@ -238,33 +239,38 @@ int main()
 	    int d = 0;
 		//creating temporary square matrix which will hold intermediate values of the cascading partial derivative between layers
 		double* dprev = (double*)calloc(num_neurons[num_layers - 1], sizeof(double));
+		double cost = 0;
 		printf("Training...\n");
 		for (int x = 0; x < iterations; x++)
 		{
-			d = rand() % (int)data_volume;	//choosing a random data point to train the network
-			#pragma omp parallel for
-			for (int j = 0; j < num_neurons[0]; j++) layer[0][j] = data[d*num_neurons[0] + j]; //updating the input buffer/layer
+            cost = 0;
+			for (int d = 0; d < data_volume; d++){
+                #pragma omp parallel for
+                for (int j = 0; j < num_neurons[0]; j++) layer[0][j] = data[d*num_neurons[0] + j]; //updating the input buffer/layer
 
-			/////////////////////////////////////////////////////////////		Forward propagation					/////////////////////////////////////////////////////////////
-			for (int j = 0; j < (num_layers - 1); j++)
-			{
-				net_layer(&layer[j][0], num_neurons[j], &layer[j + 1][0], num_neurons[j + 1], &w[j][0], &b[j][0], &dpred_dout[j][0],  1);
-			}
+                /////////////////////////////////////////////////////////////		Forward propagation					/////////////////////////////////////////////////////////////
+                for (int j = 0; j < (num_layers - 1); j++)
+                {
+                    net_layer(&layer[j][0], num_neurons[j], &layer[j + 1][0], num_neurons[j + 1], &w[j][0], &b[j][0], &dpred_dout[j][0],  1);
+                }
 
-			/////////////////////////////////////////////////////////////		FORWARD PROPAGATION FINISHES HERE!		//////////////////////////////////////////////////////////
-			/////////////////////////////////////////////////////////////		BACK PROPAGATION STARTS HERE!		/////////////////////////////////////////////////////////////
-			#pragma omp parallel for
-			for (int k = 0; k < num_neurons[num_layers - 1]; k++)
-			{
-				dprev[k] = 2 * (layer[num_layers - 1][k] - target[d*num_neurons[num_layers - 1] + k]);
+                /////////////////////////////////////////////////////////////		FORWARD PROPAGATION FINISHES HERE!		//////////////////////////////////////////////////////////
+                /////////////////////////////////////////////////////////////		BACK PROPAGATION STARTS HERE!		/////////////////////////////////////////////////////////////
+                #pragma omp parallel for
+                for (int k = 0; k < num_neurons[num_layers - 1]; k++)
+                {
+                    dprev[k] = 2 * (layer[num_layers - 1][k] - target[d*num_neurons[num_layers - 1] + k]);
+                    cost += pow((layer[num_layers - 1][k] - target[d*num_neurons[num_layers - 1] + k]),2);
+                }
+                for (int j = (num_layers - 1); j > 0; j--)
+                {
+                    training(&dpred_dout[j-1][0], &layer[j-1][0], &dprev[0], num_neurons[num_layers - 1], num_neurons[j], num_neurons[j - 1], &w[j - 1][0], &b[j - 1][0]);
+                }
+                /////////////////////////////////////////////////////////////		BACK PROPAGATION FINISHES HERE!		//////////////////////////////////////////////////////////
 			}
-			for (int j = (num_layers - 1); j > 0; j--)
-			{
-				training(&dpred_dout[j-1][0], &layer[j-1][0], &dprev[0], num_neurons[num_layers - 1], num_neurons[j], num_neurons[j - 1], &w[j - 1][0], &b[j - 1][0]);
+			if(((x+1)%modval)==0){
+                printf("\r %7.3lf%%, cost = %10.6lf",((x+1)/iterations*100),cost);
 			}
-			/////////////////////////////////////////////////////////////		BACK PROPAGATION FINISHES HERE!		//////////////////////////////////////////////////////////
-			if((x%100)==0)
-                printf("\r  %7.3lf%%",(x/iterations*100));
 		}
 		printf("\nTraining Complete.\n");
 		free(dprev);
