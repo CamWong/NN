@@ -7,7 +7,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <algorithm>
-#define LEARNING_RATE 0.5
+#define LEARNING_RATE_MAX 0.5
+#define LEARNING_RATE_MIN 0.1
 #define TXTFILE ".txt"
 #define NETWORKNUMBER ""
 #define FILEPATH ".\\"
@@ -21,12 +22,12 @@ int max_value(int* x, int num_values);
 
 //defining globals
 int training_flag = 0;
-
+double alpha = LEARNING_RATE_MAX;
 
 
 int main()
 {
-    int modval = 10;
+    int modval;
     //////////////////////////////////////////////////////////// READING FROM INITIALISATION FILE //////////////////////////////////////////////////////////////////////////////////////////
 
     //Opening the initialisation file
@@ -241,7 +242,7 @@ int main()
         FILE* cost_file;
         cost_file = fopen(FILEPATH"NN_cost" NETWORKNUMBER TXTFILE, "w");
         file_open_check(cost_file, "COST");
-        fprintf(cost_file,"%lf\n",LEARNING_RATE);
+        fprintf(cost_file,"%lf\n",alpha);
         fclose(cost_file);
         int d = 0;
         //creating temporary square matrix which will hold intermediate values of the cascading partial derivative between layers
@@ -276,11 +277,12 @@ int main()
                 /////////////////////////////////////////////////////////////		BACK PROPAGATION FINISHES HERE!		//////////////////////////////////////////////////////////
             }
             if(((x+1)%modval)==0){
-                printf("\r %7.3lf%%, cost = %10.6lf",((x+1)/iterations*100),cost);
+                printf("\r %7.3lf%%, cost = %10.6lf, alpha = %7.4lf",((x+1)/iterations*100),cost,alpha);
                 cost_file = fopen(FILEPATH"NN_cost" NETWORKNUMBER TXTFILE, "a");
                 fprintf(cost_file,"%6d   \t%10.6lf\n",x,cost);
                 fclose(cost_file);
             }
+            alpha = (2 / ( 1 + sqrt(x/iterations)) - 1 )*LEARNING_RATE_MAX + LEARNING_RATE_MIN;
         }
         printf("\nTraining Complete.\n");
         free(dprev);
@@ -334,7 +336,7 @@ int main()
             }
             tmp_error = 0;
             for(int j = 0; j<num_neurons[num_layers - 1]; j++){
-                tmp_error += pow(layer[num_layers - 1][j]-target[d*num_neurons[num_layers - 1] + j],2);
+                tmp_error += ((layer[num_layers - 1][j])-target[d*num_neurons[num_layers - 1] + j])*((layer[num_layers - 1][j])-target[d*num_neurons[num_layers - 1] + j]);
                 fprintf(eval_file,"%10.6lf ",layer[num_layers - 1][j]);
             }
             for(int j = 0; j<num_neurons[num_layers - 1]; j++) fprintf(eval_file,"%10.6lf ",target[d*num_neurons[num_layers - 1] + j],2);
@@ -437,7 +439,7 @@ void training(double* dpred_dout, double* dout_dw, double* dprev, int num_neuron
     #pragma omp parallel for
     for (int j = 0; j < num_neurons_1; j++)
     {
-        temp_out = LEARNING_RATE * dpred_dout[j] * dprev[j];
+        temp_out = alpha * dpred_dout[j] * dprev[j];
         b[j] -= temp_out;
         for (int i = 0; i < num_neurons_0; i++)
         {
