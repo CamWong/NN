@@ -6,7 +6,8 @@
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
-#define LEARNING_RATE 0.0001
+#include <algorithm>
+#define LEARNING_RATE 0.5
 #define TXTFILE ".txt"
 #define NETWORKNUMBER ""
 #define FILEPATH ".\\"
@@ -16,6 +17,7 @@ void randomise(double* input, int inputcomponents);
 void net_layer(double* input, int num_of_inputs, double* output, int num_of_outputs, double* w, double* b, double* dpred_dout, int training_flag);
 void file_open_check(FILE* file, char* file_name);
 void training(double*dpred_dout,double* dout_dw, double* dprev, int num_neurons_n, int num_neurons_1, int num_neurons_0, double* w, double* b);
+int max_value(int* x, int num_values);
 
 //defining globals
 int training_flag = 0;
@@ -243,7 +245,7 @@ int main()
         fclose(cost_file);
         int d = 0;
         //creating temporary square matrix which will hold intermediate values of the cascading partial derivative between layers
-        double* dprev = (double*)calloc(num_neurons[num_layers - 1], sizeof(double));
+        double* dprev = (double*)calloc(max_value(num_neurons,num_layers), sizeof(double));
         double cost = 0;
         printf("Training...\n");
         for (int x = 0; x < iterations; x++)
@@ -388,7 +390,16 @@ void randomise(double* input, int inputcomponents)
     return;
 }
 
-
+//This function computes the maximum value of an int array.
+int max_value(int* x, int num_values)
+{
+	int max_value = 0;
+	for (int i = 0; i < num_values; i++)
+	{
+		if (x[i] > max_value) max_value = x[i];
+	}
+	return(max_value);
+}
 
 //this function is used to update the neuron values for forward propagation, if the mode is training (training_flag=1) the intermediate partial derivatives are also calculated
 //so that they can be consolidated for use in the training function of the neural network.
@@ -413,34 +424,31 @@ void net_layer(double* input, int num_of_inputs, double* output, int num_of_outp
             //NOTE dout_din is equal to the weight matrix. dout_dw is to the input array.
             dpred_dout[j] = temp*(1 - temp);		//partial derivative of the post-sigmoid output with respect to the pre-sigmoid output
         }
-        output[j] = temp;						//Squashing the result between o and 1 with the sigmoid function
+        output[j] = temp;						//Squashing the result between 0 and 1 with the sigmoid function
     }
 }
 
 //The training function contains the back-propagation function within the
 void training(double* dpred_dout, double* dout_dw, double* dprev, int num_neurons_n, int num_neurons_1, int num_neurons_0, double* w, double* b)
 {
-    double* temp_dpred_dout = (double*)calloc(num_neurons_n, sizeof(double));
+    double* temp_dpred_dout = (double*)calloc(num_neurons_0, sizeof(double));
     if (temp_dpred_dout == NULL) printf("failed!\n\n");
     double temp_out = 0;
     #pragma omp parallel for
-    for (int k = 0; k < num_neurons_n; k++) //number of outputs
+    for (int j = 0; j < num_neurons_1; j++)
     {
-        for (int j = 0; j < num_neurons_1; j++)
+        temp_out = LEARNING_RATE * dpred_dout[j] * dprev[j];
+        b[j] -= temp_out;
+        for (int i = 0; i < num_neurons_0; i++)
         {
-            temp_out = LEARNING_RATE * dpred_dout[j] * dprev[k];
-            b[j] -= temp_out;
-            for (int i = 0; i < num_neurons_0; i++)
-            {
-                temp_dpred_dout[k] += temp_out*w[i*num_neurons_1 + j];
-                w[i*num_neurons_1 + j] -= temp_out *  dout_dw[i];
-            }
+            w[i*num_neurons_1 + j] -= temp_out *  dout_dw[i];
+            temp_dpred_dout[i] += temp_out*w[i*num_neurons_1 + j];
         }
     }
     #pragma omp parallel for
-    for (int k = 0; k < num_neurons_n; k++)
+    for (int i = 0; i < num_neurons_0; i++)
     {
-            dprev[k] = temp_dpred_dout[k];
+            dprev[i] = temp_dpred_dout[i];
     }
     free(temp_dpred_dout);
     return;

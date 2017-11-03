@@ -10,4 +10,5 @@ scatter(data(1,:),data(2,:),'b.')
 title(['Cost Over Iterations. \alpha = ' num2str(lr)])
 ylabel('Cost - [rms]')
 xlabel('Iteration Number')
+ylim([0 max(data(2,:))]);
 grid minor
